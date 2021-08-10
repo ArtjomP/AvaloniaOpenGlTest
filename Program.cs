@@ -16,8 +16,9 @@ namespace AvaloniaOpenGlTest
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
-                .UsePlatformDetect()
-                .LogToTrace()
-                .UseReactiveUI();
+            .UsePlatformDetect()
+            .With(new Win32PlatformOptions { UseWgl = true })
+            .LogToTrace()
+            .UseReactiveUI();
     }
 }
