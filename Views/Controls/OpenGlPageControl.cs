@@ -82,7 +82,7 @@ namespace AvaloniaOpenGlTest.Views.Controls
         private int _vertexBufferObject;
         private int _indexBufferObject;
         private int _vertexArrayObject;
-        private GlExtrasInterface _glExt;
+        private GlInterface _glExt;
 
         private string GetShader(bool fragment, string shader)
         {
@@ -237,10 +237,11 @@ namespace AvaloniaOpenGlTest.Views.Controls
                 Console.WriteLine(err);
         }
 
-        protected unsafe override void OnOpenGlInit(GlInterface GL, int fb)
+        protected unsafe override void OnOpenGlInit(GlInterface gl)
         {
+            var GL = gl;
             CheckError(GL);
-            _glExt = new GlExtrasInterface(GL);
+            _glExt = GL;// new GlExtrasInterface(GL);
 
             Info = $"Renderer: {GL.GetString(GL_RENDERER)} Version: {GL.GetString(GL_VERSION)}";
 
@@ -293,23 +294,40 @@ namespace AvaloniaOpenGlTest.Views.Controls
 
         }
 
-        protected override void OnOpenGlDeinit(GlInterface GL, int fb)
+        protected override void OnOpenGlDeinit(GlInterface gl)
         {
             // Unbind everything
-            GL.BindBuffer(GL_ARRAY_BUFFER, 0);
-            GL.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+            gl.BindBuffer(GL_ARRAY_BUFFER, 0);
+            gl.BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             _glExt.BindVertexArray(0);
-            GL.UseProgram(0);
+            gl.UseProgram(0);
 
             // Delete all resources.
-            GL.DeleteBuffers(2, new[] { _vertexBufferObject, _indexBufferObject });
-            _glExt.DeleteVertexArrays(1, new[] { _vertexArrayObject });
-            GL.DeleteProgram(_shaderProgram);
-            GL.DeleteShader(_fragmentShader);
-            GL.DeleteShader(_vertexShader);
+            var buffers = new[] { _vertexBufferObject, _indexBufferObject };
+            unsafe
+            {
+                fixed (int* pbuffers = buffers)
+                {
+                    gl.DeleteBuffers(2, pbuffers);
+                }
+            }
+
+            buffers = new[] { _vertexArrayObject };
+            unsafe
+            {
+                fixed (int* pbuffers = buffers)
+                {
+                    _glExt.DeleteVertexArrays(1, pbuffers);
+                }
+            }
+
+            gl.DeleteProgram(_shaderProgram);
+            gl.DeleteShader(_fragmentShader);
+            gl.DeleteShader(_vertexShader);
         }
 
         static Stopwatch St = Stopwatch.StartNew();
+
         protected override unsafe void OnOpenGlRender(GlInterface gl, int fb)
         {
             gl.ClearColor(0, 0, 0, 0);
@@ -352,33 +370,33 @@ namespace AvaloniaOpenGlTest.Views.Controls
                 Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Background);
         }
 
-        class GlExtrasInterface : GlInterfaceBase<GlInterface.GlContextInfo>
-        {
-            public GlExtrasInterface(GlInterface gl) : base(gl.GetProcAddress, gl.ContextInfo)
-            {
-            }
+        //class GlExtrasInterface : GlInterface
+        //{
+        //    public GlExtrasInterface(GlInterface gl) : base(, gl.GetProcAddress, gl.ContextInfo)
+        //    {
+        //    }
 
-            public delegate void GlDeleteVertexArrays(int count, int[] buffers);
-            [GlMinVersionEntryPoint("glDeleteVertexArrays", 3, 0)]
-            [GlExtensionEntryPoint("glDeleteVertexArraysOES", "GL_OES_vertex_array_object")]
-            public GlDeleteVertexArrays DeleteVertexArrays { get; }
+        //    public delegate void GlDeleteVertexArrays(int count, int[] buffers);
+        //    [GlMinVersionEntryPoint("glDeleteVertexArrays", 3, 0)]
+        //    [GlExtensionEntryPoint("glDeleteVertexArraysOES", "GL_OES_vertex_array_object")]
+        //    public GlDeleteVertexArrays DeleteVertexArrays { get; }
 
-            public delegate void GlBindVertexArray(int array);
-            [GlMinVersionEntryPoint("glBindVertexArray", 3, 0)]
-            [GlExtensionEntryPoint("glBindVertexArrayOES", "GL_OES_vertex_array_object")]
-            public GlBindVertexArray BindVertexArray { get; }
-            public delegate void GlGenVertexArrays(int n, int[] rv);
+        //    public delegate void GlBindVertexArray(int array);
+        //    [GlMinVersionEntryPoint("glBindVertexArray", 3, 0)]
+        //    [GlExtensionEntryPoint("glBindVertexArrayOES", "GL_OES_vertex_array_object")]
+        //    public GlBindVertexArray BindVertexArray { get; }
+        //    public delegate void GlGenVertexArrays(int n, int[] rv);
 
-            [GlMinVersionEntryPoint("glGenVertexArrays", 3, 0)]
-            [GlExtensionEntryPoint("glGenVertexArraysOES", "GL_OES_vertex_array_object")]
-            public GlGenVertexArrays GenVertexArrays { get; }
+        //    [GlMinVersionEntryPoint("glGenVertexArrays", 3, 0)]
+        //    [GlExtensionEntryPoint("glGenVertexArraysOES", "GL_OES_vertex_array_object")]
+        //    public GlGenVertexArrays GenVertexArrays { get; }
 
-            public int GenVertexArray()
-            {
-                var rv = new int[1];
-                GenVertexArrays(1, rv);
-                return rv[0];
-            }
-        }
+        //    public new int GenVertexArray()
+        //    {
+        //        var rv = new int[1];
+        //        GenVertexArrays(1, rv);
+        //        return rv[0];
+        //    }
+        //}
     }
 }
