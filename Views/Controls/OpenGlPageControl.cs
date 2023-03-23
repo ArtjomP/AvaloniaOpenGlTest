@@ -188,44 +188,42 @@ public class OpenGlPageControl : OpenGlControlBase
     public OpenGlPageControl()
     {
         var name = typeof(OpenGlPageControl).Assembly.GetManifestResourceNames().First(x => x.Contains("teapot.bin"));
-        using (var sr = new BinaryReader(typeof(OpenGlPageControl).Assembly.GetManifestResourceStream(name)))
+        using var sr = new BinaryReader(typeof(OpenGlPageControl).Assembly.GetManifestResourceStream(name));
+        var buf = new byte[sr.ReadInt32()];
+        sr.Read(buf, 0, buf.Length);
+        var points = new float[buf.Length / 4];
+        Buffer.BlockCopy(buf, 0, points, 0, buf.Length);
+        buf = new byte[sr.ReadInt32()];
+        sr.Read(buf, 0, buf.Length);
+        _indices = new ushort[buf.Length / 2];
+        Buffer.BlockCopy(buf, 0, _indices, 0, buf.Length);
+        _points = new Vertex[points.Length / 3];
+        for (var primitive = 0; primitive < points.Length / 3; primitive++)
         {
-            var buf = new byte[sr.ReadInt32()];
-            sr.Read(buf, 0, buf.Length);
-            var points = new float[buf.Length / 4];
-            Buffer.BlockCopy(buf, 0, points, 0, buf.Length);
-            buf = new byte[sr.ReadInt32()];
-            sr.Read(buf, 0, buf.Length);
-            _indices = new ushort[buf.Length / 2];
-            Buffer.BlockCopy(buf, 0, _indices, 0, buf.Length);
-            _points = new Vertex[points.Length / 3];
-            for (var primitive = 0; primitive < points.Length / 3; primitive++)
+            var srci = primitive * 3;
+            _points[primitive] = new Vertex
             {
-                var srci = primitive * 3;
-                _points[primitive] = new Vertex
-                {
-                    Position = new Vector3(points[srci], points[srci + 1], points[srci + 2])
-                };
-            }
+                Position = new Vector3(points[srci], points[srci + 1], points[srci + 2])
+            };
+        }
 
-            for (int i = 0; i < _indices.Length; i += 3)
-            {
-                Vector3 a = _points[_indices[i]].Position;
-                Vector3 b = _points[_indices[i + 1]].Position;
-                Vector3 c = _points[_indices[i + 2]].Position;
-                var normal = Vector3.Normalize(Vector3.Cross(c - b, a - b));
+        for (int i = 0; i < _indices.Length; i += 3)
+        {
+            Vector3 a = _points[_indices[i]].Position;
+            Vector3 b = _points[_indices[i + 1]].Position;
+            Vector3 c = _points[_indices[i + 2]].Position;
+            var normal = Vector3.Normalize(Vector3.Cross(c - b, a - b));
 
-                _points[_indices[i]].Normal += normal;
-                _points[_indices[i + 1]].Normal += normal;
-                _points[_indices[i + 2]].Normal += normal;
-            }
+            _points[_indices[i]].Normal += normal;
+            _points[_indices[i + 1]].Normal += normal;
+            _points[_indices[i + 2]].Normal += normal;
+        }
 
-            for (int i = 0; i < _points.Length; i++)
-            {
-                _points[i].Normal = Vector3.Normalize(_points[i].Normal);
-                _maxY = Math.Max(_maxY, _points[i].Position.Y);
-                _minY = Math.Min(_minY, _points[i].Position.Y);
-            }
+        for (int i = 0; i < _points.Length; i++)
+        {
+            _points[i].Normal = Vector3.Normalize(_points[i].Normal);
+            _maxY = Math.Max(_maxY, _points[i].Position.Y);
+            _minY = Math.Min(_minY, _points[i].Position.Y);
         }
 
     }
@@ -326,7 +324,6 @@ public class OpenGlPageControl : OpenGlControlBase
         var projection =
             Matrix4x4.CreatePerspectiveFieldOfView((float)(Math.PI / 4), (float)(Bounds.Width / Bounds.Height),
                 0.01f, 1000);
-
 
         var view = Matrix4x4.CreateLookAt(new Vector3(25, 25, 25), new Vector3(), new Vector3(0, -1, 0));
         var model = Matrix4x4.CreateFromYawPitchRoll(_yaw, _pitch, _roll);
